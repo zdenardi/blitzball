@@ -1,31 +1,38 @@
 function did_ball_collide(ball, box_x, box_y, box_w, box_h)
-    if ball.y - ball.r > box_y + box_h then
-        return false
-    end
-    if ball.y - ball.r < box_y then
-        return false
-    end
-    if ball.x - ball.r > box_x + box_w then
-        return false
-    end
-    if ball.x - ball.r < box_x then
-        return false
-    end
+    if ball.y + ball.r < box_y then return false end
+    if ball.y - ball.r > box_y + box_h then return false end
+    if ball.x + ball.r < box_x then return false end
+    if ball.x - ball.r > box_x + box_w then return false end
     return true
 end
 
-function bounce_ball_off_paddle(ball, paddle)
-    local paddle_center = paddle.x + paddle.w / 2
-    local hit_pos = ball.x - paddle_center
-    local normalized = hit_pos / (paddle.w / 2)
+function bounce_ball_off_bat(ball, batter)
+    local bat_pos = batter:get_bat_coordinates()
+    local hitbox = bat_pos.hit_box
+
+    local bat_center = (hitbox.x1 + hitbox.x2) / 2
+    local bat_width = hitbox.x2 - hitbox.x1
+
+    local hit_pos = ball.x - bat_center
+    local normalized = hit_pos / (bat_width / 2)
+
+    -- clamp
+    normalized = mid(-1, normalized, 1)
+
+    -- timing influence
+    local timing_offset = (batter.a_frame - 2) * 0.3
 
     local max_angle = 60
-    local angle = normalized * max_angle * 0.01743533
+    local angle = (normalized + timing_offset) * max_angle * 0.0174533
 
     local speed = sqrt(ball.dx ^ 2 + ball.dy ^ 2)
 
-    ball.dx = speed * sin(angle)
-    ball.dy = -speed * cos(angle)
+    -- sweet spot power
+    local sweet_spot = 1 - abs(normalized)
+    local power = 1 + sweet_spot * 0.5
+
+    ball.dx = speed * power * sin(angle)
+    ball.dy = -speed * power * cos(angle)
 end
 
 -- sx - sprite coordinate to be used
@@ -118,46 +125,6 @@ function _init()
         end
     }
 
-    paddle = {
-        x = 30,
-        y = 120,
-        w = 30,
-        h = 2,
-        color = 7,
-        speed = 0,
-        max_speed = 4,
-
-        move = function(self, dir)
-            while self.speed < self.max_speed do
-                self.speed = self.speed + 1
-            end
-
-            if dir == "l" and self.x > 1 then
-                self.x = self.x - self.speed
-            end
-            if dir == "r" and self.x < (127 - self.w) then
-                self.x = self.x + self.speed
-            end
-
-            if self.x < 2 or self.x > (127 - self.w) then
-                sfx(1)
-            end
-        end,
-        stop = function(self)
-            while self.speed > 0 do
-                self.speed = self.speed - 1
-            end
-        end,
-        update = function(self)
-        end,
-        draw = function(self)
-            -- debug
-            print(self.x, 120)
-            print(self.speed, 100)
-            rectfill(self.x, self.y, self.x + self.w, self.y + self.h, self.color)
-        end
-    }
-
     pitcher = {
         x = (7 * 8) - 5,
         y = 5 * 8,
@@ -168,8 +135,9 @@ function _init()
         a_frames = { 96, 98, 100, 102 },
         a_frame = 1,
         throw = function(self)
-            if self.state == "idle" then
+            if self.state == "idle" and ball.state == "idle" then
                 self.state = "throw"
+                sfx(2)
             end
         end,
         update = function(self)
@@ -205,11 +173,100 @@ function _init()
         spr_w = 2,
         spr_h = 2,
         state = "idle",
+        a_frames = { 66, 68, 70, 64 },
+        a_frame = 1,
+        frame_timer = 0,
+
+        -- methods --
+        swing = function(self)
+            if self.state == "idle" then
+                self.state = "swing"
+            end
+        end,
+
+        get_bat_coordinates = function(self)
+            local bat_x = self.state == "idle" and self.x - 6 or self.x + 5
+            local bat_y = self.y - 5
+            local box_x1 = bat_x + 7
+            local box_y1 = bat_y + 10
+            local box_x2 = bat_x + 17
+            local box_y2 = bat_y + 14
+
+            return {
+                x = bat_x,
+                y = bat_y,
+
+
+                hit_box = {
+                    x1 = box_x1,
+                    y1 = box_y1,
+                    x2 = box_x2,
+                    y2 = box_y2
+                }
+            }
+        end,
+
+        get_player_state = function(self)
+            return self.state
+        end,
+
+        get_a_frame = function(self)
+            return self.a_frame
+        end,
+
+        get_frame_timer = function(self)
+            return self.frame_timer
+        end,
+
 
         draw = function(self)
-            spr(self.spr, self.x, self.y, self.spr_w, self.spr_h)
+            if self.state == "idle" then
+                spr(self.spr, self.x, self.y, self.spr_w, self.spr_h)
+            elseif self.state == "swing" then
+                local frame = self.a_frames[self.a_frame]
+                spr(frame, self.x, self.y, self.spr_w, self.spr_h)
+
+                -- Update the animation frame after a certain number of frames have passed
+                if self.frame_timer < 2 then
+                    -- Adjust this value to control the speed
+                    self.frame_timer = self.frame_timer + 1
+                else
+                    if self.a_frame < #self.a_frames then
+                        self.a_frame = self.a_frame + 1
+                    else
+                        self.a_frame = 1
+                        self.state = 'idle'
+                    end
+                    self.frame_timer = 0 -- Reset the timer
+                end
+            end
         end
     }
+    bat = {
+        spr = 130,
+        spr_w = 2,
+        spr_h = 2,
+        a_frames = { 132, 134, 136, 130 },
+
+        draw = function(self)
+            local pos = batter:get_bat_coordinates()
+            local state = batter.state
+            local a_frame = batter.a_frame
+
+            local x = pos.x
+            local y = pos.y
+
+            -- sets (10, 10) to yellow
+
+            if state == "idle" then
+                spr(self.spr, x, y, self.spr_w, self.spr_h)
+            elseif state == "swing" then
+                local frame = self.a_frames[a_frame]
+                spr(frame, x, y, self.spr_w, self.spr_h)
+            end
+        end
+    }
+
     game = {
         -- more for later. not implemented
         role = 'p', -- 'b' for batter, 'p' pitcher
@@ -234,6 +291,8 @@ function _init()
 end
 
 function _update()
+    bat_pos = batter:get_bat_coordinates()
+    bat_hit_box = bat_pos.hit_box
     ball:update()
     if btn(5) then
         if game.role == 'p' then
@@ -241,6 +300,17 @@ function _update()
             ball:throw()
         end
     end
+    if btn(4) then
+        batter:swing()
+    end
+    check_ball = did_ball_collide(
+        ball,
+        bat_hit_box.x1, bat_hit_box.y1, 10, 5
+    )
+    if check_ball then
+        bounce_ball_off_bat(ball, batter)
+    end
+    -- function did_ball_collide(ball, box_x, box_y, box_w, box_h)
 end
 
 function _draw()
@@ -253,5 +323,7 @@ function _draw()
     ball:draw()
     pitcher:draw()
     batter:draw()
-    -- paddle:draw()
+    bat:draw()
+
+    --debug--
 end
