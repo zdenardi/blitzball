@@ -58,74 +58,9 @@ end
 
 function _init()
     cls()
-
-    ball = {
-        _start_x = 54,
-        _start_y = 54,
-        _start_dx = 0.3,
-        _start_dy = 2,
-        x = 53,
-        dx = 0,
-        y = 54,
-        dy = 10,
-        height = 0,
-        r = 1,
-        color = 10,
-        state = "idle", -- idle,throw,hit
-        strike_zone = {
-            x = (7 * 7) + 2,
-            y = (11 * 8) + 2
-        },
-
-        throw = function(self)
-            self.state = "throw"
-            self.dx = self._start_dx
-            self.dy = self._start_dy
-        end,
-        reset_ball = function(self)
-            self.state = "idle"
-            self.x = self._start_x
-            self.y = self._start_y
-            self.dx = 0
-            self.dy = 0
-        end,
-        init = function(self)
-            self:reset_ball()
-        end,
-        update = function(self)
-            if self.state ~= "idle" then
-                -- hit/thrown
-                self.x = self.x + self.dx
-                self.y = self.y + self.dy
-
-                if self.x > 127 or self.x < 0 then
-                    self.dx = -self.dx
-                    sfx(1)
-                end
-                if self.y > self.strike_zone.y + 13 then
-                    sfx(1)
-                    self:reset_ball()
-                end
-                if self.y < 0 then
-                    self.dy = -self.dy
-                    sfx(1)
-                end
-            end
-        end,
-        draw = function(self)
-            -- debug
-            print(self.x, 8, 8, 4)
-            print(self.y, 30, 8, 4)
-            print(self.dx, 50, 8, 4)
-            print(self.state)
-            ---
-            if self.state ~= "idle" then
-                circfill(self.x, self.y, self.r, self.color)
-            end
-        end
-    }
-
     pitcher = {
+        min_x = (7 * 8) - 9,
+        max_x = (7 * 8) - 1,
         x = (7 * 8) - 5,
         y = 5 * 8,
         spr = 102,
@@ -134,13 +69,34 @@ function _init()
         state = "idle",
         a_frames = { 96, 98, 100, 102 },
         a_frame = 1,
+
+        get_throw_pos = function(self)
+            return { x = self.x + 5, y = self.y + 8 }
+        end,
         throw = function(self)
             if self.state == "idle" and ball.state == "idle" then
                 self.state = "throw"
                 sfx(2)
             end
         end,
+        move_pitcher = function(self, dir)
+            if dir == "left" and self.x > self.min_x then
+                self.x -= 1
+            elseif dir == "right" and self.x < self.max_x then
+                self.x += 1
+            end
+        end,
         update = function(self)
+            if btn(5) then
+                pitcher:throw()
+                ball:throw()
+            end
+            if btn(0) then
+                pitcher:move_pitcher('left')
+            end
+            if btn(1) then
+                pitcher:move_pitcher('right')
+            end
             -- Add any necessary update logic here
         end,
         draw = function(self)
@@ -184,6 +140,15 @@ function _init()
             end
         end,
 
+        move_bat = function(self, dir)
+            if dir == "left" and self.x > self.min_x then
+                self.x -= 1
+            elseif dir == "right" and self.x < self.max_x then
+                self.x += 1
+            end
+        end,
+
+
         get_bat_coordinates = function(self)
             local bat_x = self.state == "idle" and self.x - 6 or self.x + 5
             local bat_y = self.y - 5
@@ -218,6 +183,12 @@ function _init()
             return self.frame_timer
         end,
 
+        update = function(self)
+            if btn(4) then
+                batter:swing()
+            end
+        end,
+
 
         draw = function(self)
             if self.state == "idle" then
@@ -242,11 +213,81 @@ function _init()
             end
         end
     }
+    hand_pos = pitcher:get_throw_pos()
+    ball = {
+        _start_x = hand_pos.x,
+        _start_y = hand_pos.y,
+        _start_dx = 0.3,
+        _start_dy = 2,
+        x = hand_pos.x,
+        dx = 0,
+        y = hand_pos.y,
+        dy = 10,
+        height = 0,
+        r = 1,
+        color = 10,
+        state = "idle", -- idle,throw,hit
+        strike_zone = {
+            x = (7 * 7) + 2,
+            y = (11 * 8) + 4
+        },
+
+        throw = function(self)
+            local hand_pos = pitcher:get_throw_pos()
+            self.state = "throw"
+            self.x = hand_pos.x
+            self.y = hand_pos.y
+            self.dx = self._start_dx
+            self.dy = self._start_dy
+        end,
+        reset_ball = function(self)
+            local hand_pos = pitcher:get_throw_pos()
+
+            self.state = "idle"
+            self.x = hand_pos.x
+            self.y = hand_pos.y
+            self.dx = 0
+            self.dy = 0
+        end,
+        init = function(self)
+            self:reset_ball()
+        end,
+        update = function(self)
+            if self.state ~= "idle" then
+                -- hit/thrown
+                self.x = self.x + self.dx
+                self.y = self.y + self.dy
+
+                if self.x > 127 or self.x < 0 then
+                    self:reset_ball()
+                end
+                if self.y > self.strike_zone.y + 13 then
+                    sfx(1)
+                    self:reset_ball()
+                end
+                if self.y < 0 then
+                    self:reset_ball()
+                end
+            end
+        end,
+        draw = function(self)
+            -- debug
+            print(self.x, 8, 8, 4)
+            print(self.y, 30, 8, 4)
+            print(self.dx, 50, 8, 4)
+            print(self.state)
+            ---
+            if self.state ~= "idle" then
+                circfill(self.x, self.y, self.r, self.color)
+            end
+        end
+    }
+
     bat = {
         spr = 130,
         spr_w = 2,
         spr_h = 2,
-        a_frames = { 132, 134, 136, 130 },
+        a_frames = { 132, 134, 136, 138, 140, 130 },
 
         draw = function(self)
             local pos = batter:get_bat_coordinates()
@@ -266,7 +307,6 @@ function _init()
             end
         end
     }
-
     game = {
         -- more for later. not implemented
         role = 'p', -- 'b' for batter, 'p' pitcher
@@ -294,20 +334,19 @@ function _update()
     bat_pos = batter:get_bat_coordinates()
     bat_hit_box = bat_pos.hit_box
     ball:update()
-    if btn(5) then
-        if game.role == 'p' then
-            pitcher:throw()
-            ball:throw()
-        end
+    if game.role == 'p' then
+        -- pitcher
+        pitcher:update()
     end
-    if btn(4) then
-        batter:swing()
-    end
-    check_ball = did_ball_collide(
+
+    batter:update()
+
+    did_hit = did_ball_collide(
         ball,
         bat_hit_box.x1, bat_hit_box.y1, 10, 5
     )
-    if check_ball then
+    if did_hit then
+        sfx(3)
         bounce_ball_off_bat(ball, batter)
     end
     -- function did_ball_collide(ball, box_x, box_y, box_w, box_h)
@@ -318,7 +357,7 @@ function _draw()
     palt(14, true)
     cls()
     map(0, 0, 0, 0, 128, 32)
-    spr(128, (7 * 7) + 2, 11 * 8 + 2, 2, 2)
+    spr(128, (7 * 7) + 2, 11 * 8 + 4, 2, 2)
 
     ball:draw()
     pitcher:draw()
