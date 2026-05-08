@@ -35,27 +35,6 @@ function bounce_ball_off_bat(ball, batter)
     ball.dy = -speed * power * cos(angle)
 end
 
--- sx - sprite coordinate to be used
--- sy - sprite y coordinate to be used
--- x - sprite x position to be drawn
--- y - sprite y position to be drawn
--- a - sprite rotation angle in degrees
--- w - half width in pixels
--- h - half heigth in pixels
-function r_spr(sx, sy, x, y, a, w, h)
-    local ca, sa = cos_sin(a)
-    local xst = x - (sa * h) - (ca * w)
-    local yst = y - (ca * h) + (sa * w)
-    w *= 2
-    h *= 2
-    for ix = 0, w, 0.5 do
-        for iy = 0, h, 0.5 do
-            local c = sget(ix + sx, iy + sy)
-            if (c > 0) pset(xst + (sa * iy) + (ca * ix), yst - (sa * ix) + (ca * iy), c)
-        end
-    end
-end
-
 function _init()
     cls()
     pitcher = {
@@ -71,14 +50,17 @@ function _init()
         a_frame = 1,
 
         get_throw_pos = function(self)
+            -- send hand pos
             return { x = self.x + 5, y = self.y + 8 }
         end,
+
         throw = function(self)
             if self.state == "idle" and ball.state == "idle" then
                 self.state = "throw"
                 sfx(2)
             end
         end,
+
         move_pitcher = function(self, dir)
             if dir == "left" and self.x > self.min_x then
                 self.x -= 1
@@ -123,6 +105,10 @@ function _init()
         frame_timer = 0 -- Variable to keep track of the number of frames since the last update
     }
     batter = {
+        min_x = 40,
+        max_x = 48,
+        min_y = 85,
+        max_y = 95,
         x = 44,
         y = 85,
         spr = 64,
@@ -147,7 +133,6 @@ function _init()
                 self.x += 1
             end
         end,
-
 
         get_bat_coordinates = function(self)
             local bat_x = self.state == "idle" and self.x - 6 or self.x + 5
@@ -188,7 +173,6 @@ function _init()
                 batter:swing()
             end
         end,
-
 
         draw = function(self)
             if self.state == "idle" then
@@ -240,6 +224,7 @@ function _init()
             self.dx = self._start_dx
             self.dy = self._start_dy
         end,
+
         reset_ball = function(self)
             local hand_pos = pitcher:get_throw_pos()
 
@@ -249,9 +234,11 @@ function _init()
             self.dx = 0
             self.dy = 0
         end,
+
         init = function(self)
             self:reset_ball()
         end,
+
         update = function(self)
             if self.state ~= "idle" then
                 -- hit/thrown
@@ -270,6 +257,7 @@ function _init()
                 end
             end
         end,
+
         draw = function(self)
             -- debug
             print(self.x, 8, 8, 4)
