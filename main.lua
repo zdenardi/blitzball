@@ -315,32 +315,50 @@ function _init()
                     self.color
                 )
                 print(self.state, 8, 12)
-                print(abs(self.dx), 30, 12)
-                print(abs(self.dy), 50, 12)
             end
         end
     }
 
     game = {
-        -- more for later. not implemented
         ball = {},
-        role = 'p', -- 'b' for batter, 'p' pitcher
-        menu = false,
+        back_wall = {
+            x1 = 0,
+            x2 = 15,
+            y1 = 0,
+            y2 = 1
+        },
+        bases = {},
+        count = { 0, 0 }, -- balls,strikes
+        hit_type = "None",
         inning = 0,
         inning_type = "top", -- bot,top, denotes .5 inning
-        outs = 0,
-        max_inning = 2, --changeable?
-        max_strikes = 3, -- changeable?
         max_balls = 5, -- changeable?
+        max_inning = 2, --changeable?
         max_outs = 3, --changeable?
-        count = { 0, 0 }, -- balls,strikes
-        bases = { 0, 0, 0 }, -- {1st,2nd,3rd}
+        max_strikes = 3, -- changeable?
+        menu = false,
+        outs = 0,
+        role = 'p', -- 'b' for batter, 'p' pitcher
         score = { 0, 0 },
-        hit_type = "None",
-        strikeout_time = false,
+        strikeout_time = false, -- stop play time better?
+        walk_time = false,
         strike_zone = {
             x = (7 * 7) + 2,
-            y = (11 * 8) + 4
+            y = (11 * 8) + 4,
+            spr_num = 128,
+
+            coords = function(self)
+                return {
+                    x1 = self.x + 3,
+                    x2 = self.x + 14,
+                    y1 = self.y + 13,
+                    y2 = self.y + 14
+                }
+            end,
+
+            draw = function(self)
+                spr(self.spr_num, self.x, self.y, 2, 2)
+            end
         },
         team1 = {
             color = 0 -- changeable?
@@ -348,11 +366,14 @@ function _init()
         team2 = {
             color = 1 --changeable?
         },
+        scr_max_x = 127,
+        scr_min_x = 0,
 
         reset_count = function(self)
             self.count = { 0, 0 }
             self.strikeout_time = false
         end,
+
         score_board = {
             x1 = 2,
             y1 = 10 * 8,
@@ -387,6 +408,7 @@ function _init()
 
                 if fget(tile, 0) then
                     self.hit_type = "out"
+                    self.outs += 1
                 elseif fget(tile, 1) then
                     self.hit_type = "single"
                 elseif fget(tile, 2) then
@@ -412,22 +434,46 @@ function _init()
                 self.ball:throw()
             end
         end,
+        -- game init
+        init = function(self)
+            -- randomly populate back wall
+            for x = self.back_wall.x1, self.back_wall.x2 do
+                local r_top_spr = rnd { 28, 29, 28 }
+                local r_btm_spr = rnd { 26, 27, 26 }
+                mset(x, self.back_wall.y1, r_top_spr)
+                mset(x, self.back_wall.y2, r_btm_spr)
+            end
+        end,
 
+        adv_runners = function(self, numOfBases)
+            test = { 0, 0, 0 }
+            for i = 1, #test do
+                test[i] = test[i] + numOfBases
+                if test[i] > 3 then
+                    -- add score
+                end
+            end
+        end,
         -- game update
         update = function(self)
+            strike_zone_coords = self.strike_zone:coords()
             -- chk backwall col
             self:ball_backwall_col()
 
             -- if ball goes out of play
             -- TODO: Set 127 and 0 to game vars
-            if self.ball.x > 127 or self.ball.x < 0 then
+            if self.ball.x > self.scr_max_x or self.ball.x < self.scr_min_x then
                 self.ball:reset_ball()
             end
 
             -- ball hits strike zone
-            if self.ball.y > self.strike_zone.y + 13 then
-                sfx(1)
-                game.count[2] += 1
+            if (self.ball.y > strike_zone_coords.y1) then
+                if self.ball.x > strike_zone_coords.x1 and self.ball.x < strike_zone_coords.x2 then
+                    sfx(1)
+                    game.count[2] += 1
+                else
+                    game.count[1] += 1
+                end
                 self.ball:reset_ball()
             end
 
@@ -476,20 +522,48 @@ function _init()
             end
         end,
 
+        -- game draw
         draw = function(self)
+            --debug
+            print(game.hit_type, 16, 16, 4)
             self.score_board:draw()
+            self.strike_zone:draw()
+
             print("sCORE", self.score_board.x1 + 2, self.score_board.y1 + 2, 7)
             print("b:" .. self.count[1])
             print("s:" .. self.count[2])
             -- strikeout
-            if self.count[2] == 3 then
+            if self.count[2] == self.max_strikes then
                 if not self.strikeout_time then
                     self.strikeout_time = time()
+                    self.outs += 1
                 end
                 print("out", game.batter.x, game.batter.y - 14, 8)
                 if time() - self.strikeout_time >= 3 then
                     self:reset_count()
                 end
+            end
+            -- strikeout
+            if self.count[1] == self.max_balls then
+                if not self.walk_time then
+                    self.walk_time = time()
+                    -- TODO: ADV Batter
+                end
+                print("walk", game.batter.x, game.batter.y - 14, 10)
+                if time() - self.walk_time >= 3 then
+                    self:reset_count()
+                end
+            end
+            for i = 1, self.count[1] do
+                -- ball count
+                circfill((self.score_board.x1 + 4) * i, self.score_board.y1 + 24, 2, 10)
+            end
+            for i = 1, self.count[2] do
+                -- strike count
+                circfill((self.score_board.x1 + 4) * i, self.score_board.y1 + 32, 2, 8)
+            end
+            for i = 1, self.outs do
+                print("X", (self.score_board.x1 + 4) * i, self.score_board.y1 + 40, 8)
             end
         end
     }
@@ -498,17 +572,7 @@ function _init()
     game.bat = bat
     game.batter = batter
     game.pitcher = pitcher
-    x1 = 1
-    x2 = 15
-    y = 2
-    y2 = 1
-    -- randomly populate back wall
-    for x = 0, 15 do
-        local r_top_spr = rnd { 28, 29, 28 }
-        local r_btm_spr = rnd { 26, 27, 26 }
-        mset(x, 0, r_top_spr)
-        mset(x, 1, r_btm_spr)
-    end
+    game:init()
 end
 
 function _update()
@@ -543,18 +607,14 @@ function _draw()
     cls()
     map(0, 0, 0, 0, 128, 32)
 
-    spr(128, (7 * 7) + 2, 11 * 8 + 4, 2, 2)
-
     game.ball = ball
 
     ball:draw()
     pitcher:draw()
     batter:draw()
     tile = fget(ball:get_tile_under_ball())
-    print(tile, 0, 16)
+
     game:draw()
-    print(ball.hght, 0, 24)
-    print(game.hit_type)
 
     --debug--
 end
