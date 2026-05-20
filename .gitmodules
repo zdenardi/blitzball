@@ -1,0 +1,3 @@
+[submodule "lib/picotestdriver"]
+	path = lib/picotestdriver
+	url = https://github.com/adamico/picotestdriver.git
