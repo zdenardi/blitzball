@@ -1,569 +1,24 @@
-function did_ball_collide(ball, box_x, box_y, box_w, box_h)
-    if ball.y + ball.r < box_y then return false end
-    if ball.y - ball.r > box_y + box_h then return false end
-    if ball.x + ball.r < box_x then return false end
-    if ball.x - ball.r > box_x + box_w then return false end
-    return true
-end
-
-function bounce_ball_off_bat(ball, batter)
-    ball.state = "hit"
-    local bat_pos = batter:get_bat_coordinates()
-    local hitbox = bat_pos.hit_box
-
-    local bat_center = (hitbox.x1 + hitbox.x2) / 2
-    local bat_width = hitbox.x2 - hitbox.x1
-
-    local hit_pos = ball.x - bat_center
-    local normalized = hit_pos / (bat_width / 2)
-
-    normalized = mid(-1, normalized, 1)
-
-    local timing_offset = (batter.a_frame - 2) * 0.3
-
-    local max_angle = 60
-    local angle = (normalized + timing_offset)
-            * max_angle
-            * 0.0174533
-
-    local speed = sqrt(ball.dx ^ 2 + ball.dy ^ 2)
-
-    local sweet_spot = 1 - abs(normalized)
-    local power = 1 + sweet_spot * 0.1
-
-    ball.dx = speed * power * sin(angle)
-    ball.dy = -speed * power * cos(angle)
-
-    -- pseudo height launch
-    local launch = (sweet_spot * 0.5) + 0.3
-    ball.dh = launch
-end
+-- todo
+-- team  switching
+-- Three outs
+-- figure out homeruns
 
 function _init()
+    win = {}
     cls()
-    pitcher = {
-        min_x = (7 * 8) - 9,
-        max_x = (7 * 8) - 1,
-        x = (7 * 8) - 5,
-        y = 5 * 8,
-        spr = 102,
-        spr_w = 2,
-        spr_h = 2,
-        state = "idle",
-        a_frames = { 96, 98, 100, 102 },
-        a_frame = 1,
-        frame_timer = 0,
 
-        get_throw_pos = function(self)
-            -- send hand pos
-            return { x = self.x + 5, y = self.y + 8 }
-        end,
+    scene = "game"
 
+    -- menu/game
 
-        throw = function(self)
-            if self.state == "idle" then
-                -- is this check needed?
-                self.state = "throw"
-                sfx(2)
-            end
-        end,
-
-        move_pitcher = function(self, dir)
-            if dir == "left" and self.x > self.min_x then
-                self.x -= 1
-            elseif dir == "right" and self.x < self.max_x then
-                self.x += 1
-            end
-        end,
-        update = function(self)
-            -- Add any necessary update logic here
-        end,
-
-        draw = function(self)
-            if self.state == "idle" then
-                spr(self.spr, self.x, self.y, self.spr_w, self.spr_h)
-            elseif self.state == "throw" then
-                local frame = self.a_frames[self.a_frame]
-                spr(frame, self.x, self.y, self.spr_w, self.spr_h)
-                -- Update the animation frame after a certain number of frames have passed
-                if self.frame_timer < 1 then
-                    -- Adjust this value to control the speed
-                    self.frame_timer = self.frame_timer + 1
-                else
-                    if self.a_frame < #self.a_frames then
-                        self.a_frame = self.a_frame + 1
-                    else
-                        self.a_frame = 1
-                        self.state = 'idle'
-                    end
-                    self.frame_timer = 0 -- Reset the timer
-                end
-            end
-        end -- pitcher draw
-    }
-
-    batter = {
-        min_x = 40,
-        max_x = 46,
-        min_y = 83,
-        max_y = 88,
-        x = 44,
-        y = 85,
-        spr = 64,
-        spr_w = 2,
-        spr_h = 2,
-        state = "idle",
-        a_frames = { 66, 68, 70, 64 },
-        a_frame = 1,
-        frame_timer = 0,
-
-        -- methods --
-        swing = function(self)
-            if self.state == "idle" then
-                self.state = "swing"
-            end
-        end,
-
-        bat = {
-            spr = 130,
-            spr_w = 2,
-            spr_h = 2,
-            a_frames = { 132, 134, 136, 138, 140, 130 },
-
-            draw = function(self, pos, batter_state, a_frame)
-                local x = pos.x
-                local y = pos.y
-
-                -- sets (10, 10) to yellow
-
-                if batter_state == "idle" then
-                    spr(self.spr, x, y, self.spr_w, self.spr_h)
-                elseif batter_state == "swing" then
-                    local frame = self.a_frames[a_frame]
-                    spr(frame, x, y, self.spr_w, self.spr_h)
-                end
-            end
-        },
-
-        move_bat = function(self, dir)
-            if dir == "left" and self.x > self.min_x then
-                self.x -= 1
-            elseif dir == "right" and self.x < self.max_x then
-                self.x += 1
-            elseif dir == "down" and self.y < self.max_y then
-                self.y += 1
-            elseif dir == "up" and self.y > self.min_y then
-                self.y -= 1
-            end
-        end,
-
-        get_bat_coordinates = function(self)
-            local bat_x = self.state == "idle" and self.x - 6 or self.x + 5
-            local bat_y = self.y - 5
-            local box_x1 = bat_x + 7
-            local box_y1 = bat_y + 10
-            local box_x2 = bat_x + 17
-            local box_y2 = bat_y + 14
-
-            return {
-                x = bat_x,
-                y = bat_y,
-
-
-                hit_box = {
-                    x1 = box_x1,
-                    y1 = box_y1,
-                    x2 = box_x2,
-                    y2 = box_y2
-                }
-            }
-        end,
-
-        get_player_state = function(self)
-            return self.state
-        end,
-
-        get_a_frame = function(self)
-            return self.a_frame
-        end,
-
-        get_frame_timer = function(self)
-            return self.frame_timer
-        end,
-
-        update = function(self)
-        end,
-
-        draw = function(self)
-            local bat_pos = self:get_bat_coordinates()
-            local state = batter.state
-            local a_frame = batter.a_frame
-            if self.state == "idle" then
-                spr(self.spr, self.x, self.y, self.spr_w, self.spr_h)
-            elseif self.state == "swing" then
-                local frame = self.a_frames[self.a_frame]
-                spr(frame, self.x, self.y, self.spr_w, self.spr_h)
-
-                -- Update the animation frame after a certain number of frames have passed
-                if self.frame_timer < 2 then
-                    -- Adjust this value to control the speed
-                    self.frame_timer = self.frame_timer + 1
-                else
-                    if self.a_frame < #self.a_frames then
-                        self.a_frame = self.a_frame + 1
-                    else
-                        self.a_frame = 1
-                        self.state = 'idle'
-                    end
-                    self.frame_timer = 0 -- Reset the timer
-                end
-            end
-            self.bat:draw(bat_pos, state, a_frame)
-        end -- batter:draw
-    }
-
-    hand_pos = pitcher:get_throw_pos()
-
-    ball = {
-        _start_x = hand_pos.x,
-        _start_y = hand_pos.y,
-        _start_dx = 0.3,
-        _start_dy = 2,
-        x = hand_pos.x,
-        dx = 0,
-        y = hand_pos.y,
-        dy = 10,
-        hght = 1,
-        dh = 0,
-        r = 1,
-        color = 10,
-        shadow_color = 5,
-        wall_hit_time = 0,
-        state = "idle", -- idle,throw,hit
-
-
-        throw = function(self)
-            local hand_pos = pitcher:get_throw_pos()
-            local hght_frame = 1
-            self.state = "throw"
-            self.x = hand_pos.x
-            self.y = hand_pos.y
-            self.dx = self._start_dx
-            self.dy = self._start_dy
-            self.hght = 1
-            self.dh = 0.5
-        end,
-
-        reset_ball = function(self)
-            local hand_pos = pitcher:get_throw_pos()
-
-            self.state = "idle"
-            self.x = hand_pos.x
-            self.y = hand_pos.y
-            self.dx = 0
-            self.dy = 0
-        end,
-
-        init = function(self)
-            self:reset_ball()
-        end,
-
-        get_tile_under_ball = function(self)
-            local tile_x = flr(self.x / 8)
-            local tile_y = flr(self.y / 8)
-            return mget(tile_x, tile_y)
-        end,
-
-        -- ball update
-        update = function(self)
-            if self.state ~= "idle" then
-                -- hit/thrown
-                self.x = self.x + self.dx
-                self.y = self.y + self.dy
-
-                -- vertical visualization
-                self.hght += self.dh
-
-                -- fake arc
-                self.dh -= 0.03
-                self.hght += self.dh
-
-                -- ground
-                if self.hght < 1 then
-                    self.hght = 1
-                    self.dh = 0
-                end
-            end
-        end,
-
-        draw = function(self)
-            local shad_x = (self.x - 2) * self.hght
-            local shad_y = (self.y - 2)
-            local tile_x = self.x / 8
-            local tile_y = self.y / 8
-
-            ---
-            if self.state ~= "idle" then
-                local effective_radius = self.r * self.hght / 8
-
-                -- shadow
-                circfill(self.x, self.y, effective_radius / 2, 5)
-                circfill(
-                    self.x,
-                    self.y - self.hght * 0.7,
-                    effective_radius,
-                    self.color
-                )
-                print(self.state, 8, 12)
-            end
-        end
-    }
-
-    game = {
-        ball = {},
-        back_wall = {
-            x1 = 0,
-            x2 = 15,
-            y1 = 0,
-            y2 = 1
-        },
-        bases = {},
-        count = { 0, 0 }, -- balls,strikes
-        hit_type = "None",
-        inning = 0,
-        inning_type = "top", -- bot,top, denotes .5 inning
-        max_balls = 5, -- changeable?
-        max_inning = 2, --changeable?
-        max_outs = 3, --changeable?
-        max_strikes = 3, -- changeable?
-        menu = false,
-        outs = 0,
-        role = 'p', -- 'b' for batter, 'p' pitcher
-        score = { 0, 0 },
-        strikeout_time = false, -- stop play time better?
-        walk_time = false,
-        strike_zone = {
-            x = (7 * 7) + 2,
-            y = (11 * 8) + 4,
-            spr_num = 128,
-
-            coords = function(self)
-                return {
-                    x1 = self.x + 3,
-                    x2 = self.x + 14,
-                    y1 = self.y + 13,
-                    y2 = self.y + 14
-                }
-            end,
-
-            draw = function(self)
-                spr(self.spr_num, self.x, self.y, 2, 2)
-            end
-        },
-        team1 = {
-            color = 0 -- changeable?
-        },
-        team2 = {
-            color = 1 --changeable?
-        },
-        scr_max_x = 127,
-        scr_min_x = 0,
-
-        reset_count = function(self)
-            self.count = { 0, 0 }
-            self.strikeout_time = false
-        end,
-
-        score_board = {
-            x1 = 2,
-            y1 = 10 * 8,
-            x2 = 4 * 8,
-            y2 = 14 * 8 + 4,
-
-            draw = function(self)
-                rectfill(self.x1, self.y1, self.x2, self.y2, 0)
-            end
-        },
-
-        base_logo = {
-            fst = false,
-            scd = false,
-            thd = false,
-            bg_x1 = 12 * 8,
-            bg_x2 = 14 * 8,
-            bg_y1 = 0,
-            bg_y2 = 0,
-
-
-            draw = function(self)
-                --bg
-                rectfill(self.x1, self.y1, self.x2, self.y2, 0)
-            end
-        },
-
-        ball_backwall_col = function(self)
-            if (self.ball.y < 8 and self.ball.state ~= "wall")
-                    or (self.ball.hght == 1 and self.ball.y < 12) then
-                local tile = self.ball:get_tile_under_ball()
-
-                if fget(tile, 0) then
-                    self.hit_type = "out"
-                    self.outs += 1
-                elseif fget(tile, 1) then
-                    self.hit_type = "single"
-                elseif fget(tile, 2) then
-                    self.hit_type = "dbl"
-                end
-
-                -- bounce the ball
-                self.ball.dx = -self.ball.dx * 0.1
-                self.ball.dy = -self.ball.dy * 0.1
-
-                -- prevent repeated bouncing every frame
-                self.ball.state = "wall"
-                self.ball.wall_hit_time = time()
-
-                -- keep the ball just inside the playfield
-                self.ball.y = 16
-            end
-        end,
-
-        throw_ball = function(self)
-            if self.pitcher.state == "idle" and ball.state == "idle" then
-                self.pitcher:throw()
-                self.ball:throw()
-            end
-        end,
-        -- game init
-        init = function(self)
-            -- randomly populate back wall
-            for x = self.back_wall.x1, self.back_wall.x2 do
-                local r_top_spr = rnd { 28, 29, 28 }
-                local r_btm_spr = rnd { 26, 27, 26 }
-                mset(x, self.back_wall.y1, r_top_spr)
-                mset(x, self.back_wall.y2, r_btm_spr)
-            end
-        end,
-
-        adv_runners = function(self, numOfBases)
-            test = { 0, 0, 0 }
-            for i = 1, #test do
-                test[i] = test[i] + numOfBases
-                if test[i] > 3 then
-                    -- add score
-                end
-            end
-        end,
-        -- game update
-        update = function(self)
-            strike_zone_coords = self.strike_zone:coords()
-            -- chk backwall col
-            self:ball_backwall_col()
-
-            -- if ball goes out of play
-            -- TODO: Set 127 and 0 to game vars
-            if self.ball.x > self.scr_max_x or self.ball.x < self.scr_min_x then
-                self.ball:reset_ball()
-            end
-
-            -- ball hits strike zone
-            if (self.ball.y > strike_zone_coords.y1) then
-                if self.ball.x > strike_zone_coords.x1 and self.ball.x < strike_zone_coords.x2 then
-                    sfx(1)
-                    game.count[2] += 1
-                else
-                    game.count[1] += 1
-                end
-                self.ball:reset_ball()
-            end
-
-            -- if ball hits backwall
-            -- remember, Pixels, not cell/tiles
-            if self.ball.y < 8 and self.ball.state ~= "wall" or (self.ball.hght == 1 and self.ball.y < 12) then
-                -- wall
-                self.ball.state = "wall"
-                self.ball.wall_hit_time = time()
-            end
-
-            -- reset ball after 3 seconds hitting wall
-            if self.ball.state == "wall" then
-                if time() - self.ball.wall_hit_time >= 3 then
-                    self.ball:reset_ball()
-                end
-            end
-
-            -- pitcher controls, should this be in game, or in obj?
-            if btn(5) then
-                self:throw_ball()
-            end
-            if btn(0) then
-                self.pitcher:move_pitcher('left')
-            end
-            if btn(1) then
-                self.pitcher:move_pitcher('right')
-            end
-
-            -- batter controls, should this be in game, or in obj?
-
-            if btn(4, 1) then
-                self.batter:swing()
-            end
-            if btn(0, 1) then
-                self.batter:move_bat("left")
-            end
-            if btn(1, 1) then
-                self.batter:move_bat("right")
-            end
-            if btn(2, 1) then
-                self.batter:move_bat("up")
-            end
-            if btn(3, 1) then
-                self.batter:move_bat("down")
-            end
-        end,
-
-        -- game draw
-        draw = function(self)
-            --debug
-            print(game.hit_type, 16, 16, 4)
-            self.score_board:draw()
-            self.strike_zone:draw()
-
-            print("sCORE", self.score_board.x1 + 2, self.score_board.y1 + 2, 7)
-            print("b:" .. self.count[1])
-            print("s:" .. self.count[2])
-            -- strikeout
-            if self.count[2] == self.max_strikes then
-                if not self.strikeout_time then
-                    self.strikeout_time = time()
-                    self.outs += 1
-                end
-                print("out", game.batter.x, game.batter.y - 14, 8)
-                if time() - self.strikeout_time >= 3 then
-                    self:reset_count()
-                end
-            end
-            -- strikeout
-            if self.count[1] == self.max_balls then
-                if not self.walk_time then
-                    self.walk_time = time()
-                    -- TODO: ADV Batter
-                end
-                print("walk", game.batter.x, game.batter.y - 14, 10)
-                if time() - self.walk_time >= 3 then
-                    self:reset_count()
-                end
-            end
-            for i = 1, self.count[1] do
-                -- ball count
-                circfill((self.score_board.x1 + 4) * i, self.score_board.y1 + 24, 2, 10)
-            end
-            for i = 1, self.count[2] do
-                -- strike count
-                circfill((self.score_board.x1 + 4) * i, self.score_board.y1 + 32, 2, 8)
-            end
-            for i = 1, self.outs do
-                print("X", (self.score_board.x1 + 4) * i, self.score_board.y1 + 40, 8)
+    cpu_pitcher = {
+        confidence = 0,
+        next_throw = "s",
+        det_pitch = function(self)
+            if game.count[2] / game.max_strikes > game.count[1] / game.max_balls then
+                self.next_throw = "s"
+            else
+                self.next_throw = "b"
             end
         end
     }
@@ -576,34 +31,23 @@ function _init()
 end
 
 function _update()
-    bat_pos = batter:get_bat_coordinates()
-    bat_hit_box = bat_pos.hit_box
-    ball:update()
-    if game.role == 'p' then
-        -- pitcher
-        pitcher:update()
+    if scene == 'start_menu' then
+        start_menu:update()
     end
 
-    batter:update()
-    game:update()
-
-    did_hit = did_ball_collide(
-        ball,
-        bat_hit_box.x1, bat_hit_box.y1, 10, 5
-    )
-    if did_hit
-            and batter.state == "swing"
-            and batter.a_frame >= 2
-            and batter.a_frame <= 3
-            and ball.dy > 0 then
-        sfx(3)
-        bounce_ball_off_bat(ball, batter)
+    if scene == 'game' then
+        game:update()
+        cpu_pitcher.balls = game.count[1]
+        cpu_pitcher.strikes = game.count[2]
+        cpu_pitcher:det_pitch()
+        if game.role == 'p' then
+            -- pitcher
+            pitcher:update()
+        end
     end
 end
 
-function _draw()
-    palt(0, false)
-    palt(14, true)
+function game_draw()
     cls()
     map(0, 0, 0, 0, 128, 32)
 
@@ -612,9 +56,25 @@ function _draw()
     ball:draw()
     pitcher:draw()
     batter:draw()
-    tile = fget(ball:get_tile_under_ball())
 
     game:draw()
+    palt(0, false)
+    palt(14, true)
+end
 
+function _draw()
+    if (scene == 'start_menu') then
+        start_menu:draw()
+    end
+    if (scene == 'game') then
+        game_draw()
+    end
+
+    function draw_window(x, y, w, h, tc, bgc)
+        rrectfill(2.75 * TILE_SIZE, 1.75 * TILE_SIZE, 10.5 * TILE_SIZE, 2.5 * TILE_SIZE, 2, 0)
+        rrectfill(3 * TILE_SIZE, 2 * TILE_SIZE, 10 * TILE_SIZE, 2 * TILE_SIZE, 2, 2)
+        print('homerun', 5.5 * TILE_SIZE + 4, 2.65 * TILE_SIZE, 7)
+    end
+    draw_window(3, 2, 10, 2)
     --debug--
 end
