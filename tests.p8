@@ -135,10 +135,96 @@ test(
                 end)
                 it('should change state from idle to pitch',function()
                     local g = game
-                    g.state = 'out'
+                    g.state = 'idle'
+                    g:to_pitch()
                     return
-                    g:verify_transition('out') == false
+                    g.state == 'pitch'
                 end)
+                it('should change state from pitch to hit',function()
+                    local g = game
+                    g.state = 'pitch'
+                    g:to_hit()
+                    return
+                    g.state == 'hit'
+                end)
+                it('should change state from pitch to strike',function()
+                    local g = game
+                    g.state = 'pitch'
+                    g:to_strike()
+                    return
+                    g.state == 'strike'
+                end)
+                it('should change state from pitch to ball',function()
+                    local g = game
+                    g.state = 'pitch'
+                    g:to_ball()
+                    return
+                    g.state == 'ball'
+                end)
+                it('should change state from pitch to miss',function()
+                    local g = game
+                    g.state = 'pitch'
+                    g:to_miss()
+                    return
+                    g.state == 'miss'
+                end)
+                it('should change state from hit to out',function()
+                    local g = game
+                    g.state = 'hit'
+                    g:to_out()
+                    return g.state == "out"
+                end)
+                it('should change state from hit to foul',function()
+                    local g = game
+                    g.state = 'hit'
+                    g:to_foul()
+                    return g.state == "foul"
+                end)
+                it('should change state from hit to base',function()
+                    local g = game
+                    g.state = 'hit'
+                    g:to_base()
+                    return g.state == "base"
+                end)
+                it('should change state from menu to idle',function()
+                    local g = game
+                    g.state = 'menu'
+                    g:to_idle()
+                    return g.state == "idle"
+                end)
+                it('should change state from strike to idle',function()
+                    local g = game
+                    g.state = 'strike'
+                    g:to_idle()
+                    return g.state == "idle"
+                end)
+                it('should change state from strike to out',function()
+                    local g = game
+                    g.state = 'strike'
+                    g:to_out()
+                    return g.state == "out"
+                end)
+                it('should change state from base to idle',function()
+                    local g = game
+                    g.state = 'base'
+                    g:to_idle()
+                    return g.state == "idle"
+                end)
+                it('should change state from out,base and foul to idle',function()
+                    local g = game
+                    g.state = 'base'
+                    g:to_idle()
+                    t1 = g.state
+                    g.state = 'foul'
+                    g:to_idle()
+                    t2 = g.state 
+                    g.state = 'out'
+                    g:to_idle()
+                    t3 = g.state
+
+                    return t1 == 'idle' and t2 == 'idle' and t3 == 'idle'
+                end)
+                
                 it(
                     'State should change from ball to run', function()
                         local g = game
@@ -151,12 +237,12 @@ test(
                         return g.state == "idle" and g.count[2] == 1
                     end
                 )
+                
             end
         )
         
     end
 )
-      extcmd("quit")
 
 
 

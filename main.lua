@@ -75,6 +75,6 @@ function _draw()
         rrectfill(3 * TILE_SIZE, 2 * TILE_SIZE, 10 * TILE_SIZE, 2 * TILE_SIZE, 2, 2)
         print('homerun', 5.5 * TILE_SIZE + 4, 2.65 * TILE_SIZE, 7)
     end
-    draw_window(3, 2, 10, 2)
+    -- draw_window(3, 2, 10, 2)
     --debug--
 end

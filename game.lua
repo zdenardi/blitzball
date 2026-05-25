@@ -10,26 +10,36 @@ game = {
         'foul',
         'out',
         'walk',
-        'switch',
-        transitions = {
-            idle = { "pitch", "menu" },
-            pitch = { "hit", "miss", "strike", "ball" },
-            hit = { "foul", "out", "base" },
-            menu = { "idle" },
-            strike = { "out", "idle" },
-            base = { "idle" },
-            out = { "idle" },
-            foul = { "idle" }
-        }
+        'switch'
     },
-    ball = {},
+    _transitions = {
+        idle = { "pitch", "menu" },
+        pitch = { "hit", "miss", "strike", "ball" },
+        hit = { "foul", "out", "base" },
+        menu = { "idle" },
+        strike = { "out", "idle" },
+        base = { "idle" },
+        out = { "idle" },
+        foul = { "idle" }
+    },
+    ball = {}, -- ball object
     back_wall = {
         x1 = 0,
         x2 = 15,
         y1 = 0,
         y2 = 1
     },
-    runners = {},
+    runners = {
+        0, 0, 0,
+        check_base = function(self, num)
+            if (num > 3) assert(true == false, "check_base only takes 0-3")
+            return self[num]
+        end,
+        adv_runners = function(self, num)
+        end,
+        walk_runner = function(self)
+        end
+    },
     count = {
         0, 0,
         addStrike = function(self)
@@ -216,17 +226,37 @@ game = {
     end,
 
     verify_transition = function(self, s)
-        return value_exists(self._states.transitions[self.state], s)
+        return value_exists(self._transitions[self.state], s)
     end,
 
     change_state = function(self, s)
-        if verify_transition(s) then
+        if self:verify_transition(s) then
             self.state = s
         else
-            assert(1 == -0, "Invalid State Transition w:" .. self.state .. '=>' .. self.s)
+            printh("Invalid State Transition w:" .. self.state .. '=>' .. s)
         end
     end,
 
+    did_ball_hit_zone = function(self, s)
+        local strike_zone_coords = self.strike_zone:coords()
+        if (self.ball.y > strike_zone_coords.y1)
+                and (self.ball.y < strike_zone_coords.y2)
+                and (self.ball.x > strike_zone_coords.x1)
+                and (self.ball.x < strike_zone_coords.x2)
+                and (self.ball.hght > 1) then
+            sfx(4)
+            return true
+        else
+            return false
+        end
+    end,
+
+    did_ball_leave_scrn = function(self)
+        if self.ball.x > self.scr_max_x or self.ball.x < self.scr_min_x or self.ball.y > self.scr_max_y then
+            return true
+        end
+        return false
+    end,
 
     adv_runners = function(self, num_of_bases)
         local runners_to_update = {}
@@ -264,19 +294,22 @@ game = {
     is_out = function(self) return self.state == "out" end,
     is_strike_out = function(self) return self.count:get('strike') == self.max_strikes end,
     is_walk = function(self) return self.count:get('ball') == self.max_balls end,
-
-    was_hit = function(self) return self.state == "hit" end,
-    was_missed = function(self) return self.state == "miss" end,
-    was_ball = function(self) return self.state == "ball" end,
-    was_strike = function(self) return self.state == "strike" end,
-    was_walked = function(self) return self.state == "walk" end,
+    is_hit = function(self) return self.state == "hit" end,
+    is_missed = function(self) return self.state == "miss" end,
+    is_ball = function(self) return self.state == "ball" end,
+    is_strike = function(self) return self.state == "strike" end,
+    is_walked = function(self) return self.state == "walk" end,
 
     -- transitions
-    to_strike = function(self) self:change_state('strike') end,
     to_ball = function(self) self:change_state('ball') end,
     to_hit = function(self) self:change_state('hit') end,
     to_idle = function(self) self:change_state('idle') end,
     to_out = function(self) self:change_state('out') end,
+    to_pitch = function(self) self:change_state('pitch') end,
+    to_strike = function(self) self:change_state('strike') end,
+    to_miss = function(self) self:change_state('miss') end,
+    to_foul = function(self) self:change_state('foul') end,
+    to_base = function(self) self:change_state('base') end,
 
 
     did_ball_hit_wall = function(self)
@@ -338,8 +371,8 @@ game = {
             bat_hit_box = bat_pos.hit_box
 
             -- ball hits strike zone
-            if (self.ball.y > strike_zone_coords.y1) then
-                if self.ball.x > strike_zone_coords.x1 and self.ball.x < strike_zone_coords.x2 and self.ball.hght > 1 then
+            if (self.ball.y > self.strike_zone:coords().y1) then
+                if self:did_ball_hit_zone() then
                     self:to_strike()
                 else
                     if self.ball.state ~= "hit" and batter.did_swing ~= true then
@@ -368,9 +401,9 @@ game = {
             end
         end
 
-        if self:was_hit() then
+        if self:is_hit() then
             -- if ball goes out of play
-            if self.ball.x > self.scr_max_x or self.ball.x < self.scr_min_x or self.ball.y > self.scr_max_y then
+            if self:did_ball_leave_scrn() then
                 -- foul ball
                 if self.ball.state == "hit" and self.count:get('strike') < 2 then
                     self.count:add('strike')
@@ -379,14 +412,13 @@ game = {
             end
         end
 
-        if self:was_missed() then
+        if self:is_missed() then
             self.count:add('strike')
             self:reset_pitch()
         end
 
-        if self:was_ball() then
+        if self:is_ball() then
             self.count:add('ball')
-
             if self:is_walk() then
                 self:walk_runner()
                 self.state = "walk"
@@ -395,16 +427,21 @@ game = {
             end
         end
 
-        if self:was_strike() then
+        if self:is_strike() then
             sfx(1)
             self.count:add('strike')
-            self:reset_pitch()
+
+            if self:is_strike_out() then
+                self:to_out()
+            else
+                self:reset_pitch()
+            end
         end
 
         if self.state == "switch" then
         end
 
-        if self:was_walked() then
+        if self:is_walked() then
             if not self.stop_time then
                 self.stop_time = time()
             end
@@ -421,21 +458,12 @@ game = {
             end
             if time() - self.stop_play_timer >= WAIT_T then
                 self:reset_count()
-                self:to_idle()
+                self:reset_pitch()
             end
         end
 
-        if self:is_strike_out() then
-            self:to_out()
-        end
-
-        strike_zone_coords = self.strike_zone:coords()
         -- chk backwall col
         self:handle_backwall_collision()
-
-        -- if ball hits backwall
-        -- remember, Pixels, not cell/tiles
-
         -- reset ball after 3 seconds hitting wall
         self:did_ball_hit_wall()
 
