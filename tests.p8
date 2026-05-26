@@ -237,8 +237,17 @@ test(
                         return g.state == "idle" and g.count[2] == 1
                     end
                 )
+                it(
+                    'Should adv the runners', function()
+                        local bases = 000
+                        bases = bases | 1
+                        if (bases & 1) != 0 then
+                            printh("1st occupied")
+                        end
+                    end
+                )
                 
-            end
+            end -- game desc
         )
         
     end

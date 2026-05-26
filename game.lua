@@ -1,5 +1,4 @@
--- try to get rid of raw numbers
--- see if you are doing a lot of indexing, if you are make a function
+-- handle wall collision not working correctly
 game = {
     _states = {
         'pitch',
@@ -10,10 +9,11 @@ game = {
         'foul',
         'out',
         'walk',
-        'switch'
+        'switch',
+        'gameover'
     },
     _transitions = {
-        idle = { "pitch", "menu" },
+        idle = { "pitch", "menu", "gameover" },
         pitch = { "hit", "miss", "strike", "ball" },
         hit = { "foul", "out", "base" },
         menu = { "idle" },
@@ -29,15 +29,14 @@ game = {
         y1 = 0,
         y2 = 1
     },
-    runners = {
-        0, 0, 0,
-        check_base = function(self, num)
+    runners = {},
+    _runners = {
+        bases = { 0, 0, 0 }, --1/2/3
+        check = function(self, num)
             if (num > 3) assert(true == false, "check_base only takes 0-3")
             return self[num]
         end,
-        adv_runners = function(self, num)
-        end,
-        walk_runner = function(self)
+        adv = function(self, num)
         end
     },
     count = {
@@ -163,10 +162,10 @@ game = {
         self.count:reset()
         self.stop_play_timer = false
     end,
+
     get_state = function(self)
         return self.state
     end,
-
 
     throw_ball = function(self)
         if self.pitcher.state == "idle" and ball.state == "idle" then
@@ -295,6 +294,7 @@ game = {
     is_strike_out = function(self) return self.count:get('strike') == self.max_strikes end,
     is_walk = function(self) return self.count:get('ball') == self.max_balls end,
     is_hit = function(self) return self.state == "hit" end,
+    is_wall = function(self) return self.state == "wall" end,
     is_missed = function(self) return self.state == "miss" end,
     is_ball = function(self) return self.state == "ball" end,
     is_strike = function(self) return self.state == "strike" end,
@@ -385,12 +385,12 @@ game = {
             end
 
             -- batter hits ball
-            did_b_hit = did_ball_collide(
+            did_batter_hit = did_ball_collide(
                 ball,
                 bat_hit_box.x1, bat_hit_box.y1, 10, 5
             )
 
-            if did_b_hit
+            if did_batter_hit
                     and self.batter.state == "swing"
                     and self.batter.a_frame >= 2
                     and self.batter.a_frame <= 3
