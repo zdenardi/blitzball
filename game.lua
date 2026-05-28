@@ -12,6 +12,7 @@ game = {
         'switch',
         'gameover'
     },
+
     _transitions = {
         idle = { "pitch", "menu", "gameover" },
         pitch = { "hit", "miss", "strike", "ball" },
@@ -22,23 +23,76 @@ game = {
         out = { "idle" },
         foul = { "idle" }
     },
+
     ball = {}, -- ball object
+
     back_wall = {
         x1 = 0,
         x2 = 15,
         y1 = 0,
         y2 = 1
     },
+
     runners = {},
+
     _runners = {
-        bases = { 0, 0, 0 }, --1/2/3
-        check = function(self, num)
-            if (num > 3) assert(true == false, "check_base only takes 0-3")
-            return self[num]
-        end,
-        adv = function(self, num)
-        end
+        bases = 000 --1/2/3
     },
+
+    on_first = function(self)
+        return ((self._runners.bases & 1) != 0)
+    end,
+
+    on_second = function(self)
+        return ((self._runners.bases & 2) != 0)
+    end,
+
+    on_third = function(self)
+        return ((self._runners.bases & 4) != 0)
+    end,
+
+    clear_bases = function(self)
+        self._runners.bases = 0
+    end,
+
+    advance_runners = function(self, hit)
+        local scored = 0
+        -- shift runners forward
+        local shifted = self._runners.bases << hit
+
+        -- check to see if anyone scored
+        scored += shifted >> 3
+
+        self._runners.bases = shifted & 7
+        if hit < 4 then
+            self._runners.bases |= (1 << (hit - 1))
+        else
+            scored += 1
+        end
+    end,
+
+    walk = function(self)
+        local scored = 0
+
+        -- bases loaded
+        if self._runners.bases == 7 then
+            scored = 1
+        end
+
+        -- shift only forced runners
+        if (self._runners.bases & 1) != 0 then
+            self._runners.bases <<= 1
+        end
+
+        -- keep valid base bits
+        self._runners.bases &= 7
+
+        -- batter to first
+        self._runners.bases |= 1
+
+        -- self.score += scored
+    end,
+
     count = {
         0, 0,
         addStrike = function(self)
@@ -81,11 +135,11 @@ game = {
     role = 'p', -- 'b' for batter, 'p' pitcher
     score = { 0, 0 },
     stop_play_timer = false,
+
     strike_zone = {
         x = 51,
         y = 92,
         spr_num = 128,
-
         coords = function(self)
             return {
                 x1 = self.x + 3,
@@ -125,6 +179,7 @@ game = {
             y2 = 12 * TILE_SIZE + 4
         }
     },
+
     right_menu = {
         x = 94,
         y = 85,
@@ -136,6 +191,7 @@ game = {
             rrectfill(self.x, self.y, self.w, self.h, 3, 0)
         end
     },
+
     team1 = {
         color = uni_colors[2] -- changeable?
     },

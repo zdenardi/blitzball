@@ -238,14 +238,33 @@ test(
                     end
                 )
                 it(
-                    'Should adv the runners', function()
-                        local bases = 000
-                        bases = bases | 1
-                        if (bases & 1) != 0 then
-                            printh("1st occupied")
-                        end
+                    'Should show that first second and third base are occupied', function()
+                        local g = game
+                        g._runners.bases = 001
+                        on_first = g:on_first()
+                        g._runners.bases = 010
+                        on_second = g:on_second()
+                        g._runners.bases = 100
+                        on_third = g:on_third()
+                        return on_first and on_second and on_third
                     end
                 )
+                it('should adv the runners',function()
+                    local g = game
+                    g._runners.bases = 001
+                    g:advance_runners(2)
+                    on_second = g:on_second()
+                    on_third = g:on_third()
+                    return on_second and on_third
+                end)
+                it('should walk the runner',function()
+                    local g = game
+                    g._runners.bases = 001
+                    g:walk()
+                    on_first = g:on_first()
+                    on_second = g:on_second()
+                    return on_second
+                end)
                 
             end -- game desc
         )
@@ -261,6 +280,7 @@ function _draw(
 )
 cls()
     print("running tests!")
+    
 
 end
 
@@ -275,6 +295,7 @@ function _update()
     extcmd( 'shutdown' )
   end
 end
+  extcmd( 'shutdown' )
 
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
