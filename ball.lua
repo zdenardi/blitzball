@@ -2,6 +2,18 @@
 hand_pos = pitcher:get_throw_pos()
 
 ball = {
+    _states = {
+        'idle',
+        'thrown',
+        'hit',
+        'wall'
+    },
+    _transitions = {
+        idle = { "thrown" },
+        thrown = { 'idle', 'hit' },
+        hit = { 'idle', 'wall' },
+        wall = { 'idle' }
+    },
     _start_x = hand_pos.x,
     _start_y = hand_pos.y,
     _start_dx = 0.3,
@@ -13,7 +25,7 @@ ball = {
     hght = 1,
     dh = 0,
     r = 1,
-    color = 10,
+    color = CLR.YLW,
     shadow_color = 5,
     wall_hit_time = 0,
     state = "idle", -- idle,throw,hit
