@@ -33,7 +33,6 @@ game = {
         y2 = 1
     },
 
-    runners = {},
 
     _runners = 000, --3/2/1
     on_first = function(self)
@@ -318,31 +317,6 @@ game = {
         return false
     end,
 
-    adv_runners = function(self, num_of_bases)
-        local runners_to_update = {}
-        local runners_to_remove = {}
-        for rnr in all(self.runners) do
-            local t = rnr + num_of_bases
-            if t > 3 then
-                self.score[1] += 1
-                runners_to_remove[rnr] = true
-            else
-                runners_to_update[rnr] = t
-            end
-        end
-        for rnr, new_val in ipairs(runners_to_update) do
-            self.runners[rnr] = new_val
-        end
-        for rnr in pairs(runners_to_remove) do
-            self.runners[rnr] = nil
-        end
-
-        if num_of_bases > 3 then
-            self.score[1] += 1
-        else
-            add(self.runners, num_of_bases)
-        end
-    end,
 
     reset_pitch = function(self)
         self.ball:reset_ball()
