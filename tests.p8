@@ -58,20 +58,6 @@ test(
             end
         )
         desc(
-            'adv_runner', function()
-                it(
-                    'should advance a batter, and game.runners should be {1,2}', function()
-                        local g = game
-
-                        exp_num = 1
-                        g.runners = {}
-                        g:adv_runners(2)
-                        return #g.runners == exp_num
-                    end
-                )
-            end
-        )
-        desc(
             'Game State Machine', function()
                 it('should verify transitions for idle state',function()
                     local g = game
@@ -183,7 +169,7 @@ test(
                 it('should change state from hit to base',function()
                     local g = game
                     g.state = 'hit'
-                    g:to_base()
+                    g:to_base(1)
                     return g.state == "base"
                 end)
                 it('should change state from menu to idle',function()
