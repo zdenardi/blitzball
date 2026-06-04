@@ -77,6 +77,4 @@ function _draw()
     end
     -- draw_window(3, 2, 10, 2)
     --debug--
-    print("game: " .. game.state, 8, 50)
-    print("ball: " .. ball.state, 8, 60)
 end

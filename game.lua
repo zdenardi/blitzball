@@ -35,7 +35,7 @@ game = {
 
     runners = {},
 
-    _runners = 000, --1/2/3
+    _runners = 000, --3/2/1
     on_first = function(self)
         return ((self._runners & 1) != 0)
     end,
@@ -371,7 +371,10 @@ game = {
     to_strike = function(self) self:change_state('strike') end,
     to_miss = function(self) self:change_state('miss') end,
     to_foul = function(self) self:change_state('foul') end,
-    to_base = function(self) self:change_state('base') end,
+    to_base = function(self, num)
+        self:advance_runners(num)
+        self:change_state('base')
+    end,
 
 
     did_ball_hit_wall = function(self)
@@ -386,19 +389,14 @@ game = {
         if (self.ball.y < 8 and self.ball.state ~= "wall")
                 or (self.ball.hght == 1 and self.ball.y < 12) then
             local tile = self.ball:get_tile_under_ball()
-
             if fget(tile, 0) then
                 self:to_out()
             elseif fget(tile, 1) then
                 self.hit_type = "single"
-                self:to_base()
-                self:advance_runners(1)
-                self:reset_count()
+                self:to_base(1)
             elseif fget(tile, 2) then
                 self.hit_type = "dbl"
-                self:to_base()
-                self:advance_runners(2)
-                self:reset_count()
+                self:to_base(2)
             end
 
             -- bounce the ball
@@ -584,11 +582,23 @@ game = {
         self.right_menu:draw()
         -- bases graphic
 
-        rectfill(self.bases[1].x1, self.bases[1].y1, self.bases[1].x2, self.bases[1].y2, 7)
+        if self:on_first() then
+            rectfill(self.bases[1].x1, self.bases[1].y1, self.bases[1].x2, self.bases[1].y2, 10)
+        else
+            rectfill(self.bases[1].x1, self.bases[1].y1, self.bases[1].x2, self.bases[1].y2, 7)
+        end
 
-        rectfill(self.bases[2].x1, self.bases[2].y1, self.bases[2].x2, self.bases[2].y2, 7)
+        if self:on_second() then
+            rectfill(self.bases[2].x1, self.bases[2].y1, self.bases[2].x2, self.bases[2].y2, 10)
+        else
+            rectfill(self.bases[2].x1, self.bases[2].y1, self.bases[2].x2, self.bases[2].y2, 7)
+        end
 
-        rectfill(self.bases[3].x1, self.bases[3].y1, self.bases[3].x2, self.bases[3].y2, 7)
+        if self:on_third() then
+            rectfill(self.bases[3].x1, self.bases[3].y1, self.bases[3].x2, self.bases[3].y2, 10)
+        else
+            rectfill(self.bases[3].x1, self.bases[3].y1, self.bases[3].x2, self.bases[3].y2, 7)
+        end
 
         print("sCORE:" .. self.score[1], self.score_board.x1 + 2, self.score_board.y1 + 2, 7)
 
