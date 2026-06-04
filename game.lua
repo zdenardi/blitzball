@@ -580,47 +580,38 @@ game = {
         self.score_board:draw()
         self.strike_zone:draw()
         self.right_menu:draw()
+
         -- bases graphic
-
-        if self:on_first() then
-            rectfill(self.bases[1].x1, self.bases[1].y1, self.bases[1].x2, self.bases[1].y2, 10)
-        else
-            rectfill(self.bases[1].x1, self.bases[1].y1, self.bases[1].x2, self.bases[1].y2, 7)
+        for i = 1, 3 do
+            local clr = CLR.WHT
+            if (self._runners & (1 << (i - 1))) != 0 then
+                clr = CLR.YLW
+            end
+            local base = self.bases[i]
+            rectfill(base.x1, base.y1, base.x2, base.y2, clr)
         end
 
-        if self:on_second() then
-            rectfill(self.bases[2].x1, self.bases[2].y1, self.bases[2].x2, self.bases[2].y2, 10)
-        else
-            rectfill(self.bases[2].x1, self.bases[2].y1, self.bases[2].x2, self.bases[2].y2, 7)
-        end
-
-        if self:on_third() then
-            rectfill(self.bases[3].x1, self.bases[3].y1, self.bases[3].x2, self.bases[3].y2, 10)
-        else
-            rectfill(self.bases[3].x1, self.bases[3].y1, self.bases[3].x2, self.bases[3].y2, 7)
-        end
-
-        print("sCORE:" .. self.score[1], self.score_board.x1 + 2, self.score_board.y1 + 2, 7)
+        print("sCORE:" .. self.score[1], self.score_board.x1 + 2, self.score_board.y1 + 2, CLR.WHT)
 
         -- strikeout
         if self.state == "out" then
-            print("out", game.batter.x, game.batter.y - 14, 8)
+            print("out", game.batter.x, game.batter.y - 14, CLR.RED)
         end
         -- walk
         if self.state == "walk" then
-            print("walk", game.batter.x, game.batter.y - 14, 10)
+            print("walk", game.batter.x, game.batter.y - 14, CLR.YLW)
         end
 
         for i = 1, self.count:get('ball') do
             -- ball count
-            circfill((self.score_board.x1 + 4) * i, self.score_board.y1 + 10, 2, 10)
+            circfill((self.score_board.x1 + 4) * i, self.score_board.y1 + 10, 2, CLR.YLW)
         end
         for i = 1, self.count:get('strike') do
             -- strike count
-            circfill((self.score_board.x1 + 4) * i, self.score_board.y1 + 16, 2, 8)
+            circfill((self.score_board.x1 + 4) * i, self.score_board.y1 + 16, 2, CLR.RED)
         end
         for i = 1, self.outs do
-            print("X", (self.score_board.x1 + 4) * i, self.score_board.y1 + 20, 8)
+            print("X", (self.score_board.x1 + 4) * i, self.score_board.y1 + 20, CLR.RED)
         end
     end
 }
