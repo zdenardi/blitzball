@@ -35,37 +35,34 @@ game = {
 
     runners = {},
 
-    _runners = {
-        bases = 000 --1/2/3
-    },
-
+    _runners = 000, --1/2/3
     on_first = function(self)
-        return ((self._runners.bases & 1) != 0)
+        return ((self._runners & 1) != 0)
     end,
 
     on_second = function(self)
-        return ((self._runners.bases & 2) != 0)
+        return ((self._runners & 2) != 0)
     end,
 
     on_third = function(self)
-        return ((self._runners.bases & 4) != 0)
+        return ((self._runners & 4) != 0)
     end,
 
     clear_bases = function(self)
-        self._runners.bases = 0
+        self._runners = 0
     end,
 
     advance_runners = function(self, hit)
         local scored = 0
         -- shift runners forward
-        local shifted = self._runners.bases << hit
+        local shifted = self._runners << hit
 
         -- check to see if anyone scored
         scored += shifted >> 3
 
-        self._runners.bases = shifted & 7
+        self._runners = shifted & 7
         if hit < 4 then
-            self._runners.bases |= (1 << (hit - 1))
+            self._runners |= (1 << (hit - 1))
         else
             scored += 1
         end
@@ -75,20 +72,20 @@ game = {
         local scored = 0
 
         -- bases loaded
-        if self._runners.bases == 7 then
+        if self._runners == 7 then
             scored = 1
         end
 
         -- shift only forced runners
-        if (self._runners.bases & 1) != 0 then
-            self._runners.bases <<= 1
+        if (self._runners & 1) != 0 then
+            self._runners <<= 1
         end
 
         -- keep valid base bits
-        self._runners.bases &= 7
+        self._runners &= 7
 
         -- batter to first
-        self._runners.bases |= 1
+        self._runners |= 1
 
         -- self.score += scored
     end,
@@ -284,6 +281,15 @@ game = {
         return value_exists(self._transitions[self.state], s)
     end,
 
+    pause_play = function(self, t, fn)
+        if not self.stop_play_timer then
+            self.stop_play_timer = time()
+        end
+        if time() - self.stop_play_timer >= t then
+            fn()
+        end
+    end,
+
     change_state = function(self, s)
         if self:verify_transition(s) then
             self.state = s
@@ -299,7 +305,6 @@ game = {
                 and (self.ball.x > strike_zone_coords.x1)
                 and (self.ball.x < strike_zone_coords.x2)
                 and (self.ball.hght > 1) then
-            sfx(4)
             return true
         else
             return false
@@ -355,6 +360,7 @@ game = {
     is_ball = function(self) return self.state == "ball" end,
     is_strike = function(self) return self.state == "strike" end,
     is_walked = function(self) return self.state == "walk" end,
+    is_base = function(self) return self.state == "base" end,
 
     -- transitions
     to_ball = function(self) self:change_state('ball') end,
@@ -382,14 +388,16 @@ game = {
             local tile = self.ball:get_tile_under_ball()
 
             if fget(tile, 0) then
-                self.state = "out"
+                self:to_out()
             elseif fget(tile, 1) then
                 self.hit_type = "single"
-                self:adv_runners(1)
+                self:to_base()
+                self:advance_runners(1)
                 self:reset_count()
             elseif fget(tile, 2) then
                 self.hit_type = "dbl"
-                self:adv_runners(2)
+                self:to_base()
+                self:advance_runners(2)
                 self:reset_count()
             end
 
@@ -458,6 +466,10 @@ game = {
         end
 
         if self:is_hit() then
+            -- chk backwall col
+            self:handle_backwall_collision()
+            -- reset ball after 3 seconds hitting wall
+            self:did_ball_hit_wall()
             -- if ball goes out of play
             if self:did_ball_leave_scrn() then
                 -- foul ball
@@ -476,7 +488,7 @@ game = {
         if self:is_ball() then
             self.count:add('ball')
             if self:is_walk() then
-                self:walk_runner()
+                self:walk()
                 self.state = "walk"
             else
                 self:reset_pitch()
@@ -495,6 +507,7 @@ game = {
         end
 
         if self.state == "switch" then
+            -- TODO
         end
 
         if self:is_walked() then
@@ -508,20 +521,23 @@ game = {
         end
 
         if self:is_out() then
-            if not self.stop_play_timer then
-                self.stop_play_timer = time()
-                self.outs += 1
-            end
-            if time() - self.stop_play_timer >= WAIT_T then
-                self:reset_count()
-                self:reset_pitch()
-            end
+            self:pause_play(
+                WAIT_T, function()
+                    self.outs += 1
+                    self:reset_count()
+                    self:reset_pitch()
+                end
+            )
         end
 
-        -- chk backwall col
-        self:handle_backwall_collision()
-        -- reset ball after 3 seconds hitting wall
-        self:did_ball_hit_wall()
+        if self:is_base() then
+            self:pause_play(
+                WAIT_T, function()
+                    self:reset_count()
+                    self:reset_pitch()
+                end
+            )
+        end
 
         if not self:is_out() then
             -- b_type = cpu_pitcher:det_pitch()
@@ -568,13 +584,11 @@ game = {
         self.right_menu:draw()
         -- bases graphic
 
-        for b = 1, #self.bases do
-            clr = self.bases[b].color
-            if value_exists(self.runners, self.bases[b].id) then
-                clr = 10
-            end
-            rectfill(self.bases[b].x1, self.bases[b].y1, self.bases[b].x2, self.bases[b].y2, clr)
-        end
+        rectfill(self.bases[1].x1, self.bases[1].y1, self.bases[1].x2, self.bases[1].y2, 7)
+
+        rectfill(self.bases[2].x1, self.bases[2].y1, self.bases[2].x2, self.bases[2].y2, 7)
+
+        rectfill(self.bases[3].x1, self.bases[3].y1, self.bases[3].x2, self.bases[3].y2, 7)
 
         print("sCORE:" .. self.score[1], self.score_board.x1 + 2, self.score_board.y1 + 2, 7)
 

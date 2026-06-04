@@ -240,18 +240,18 @@ test(
                 it(
                     'Should show that first second and third base are occupied', function()
                         local g = game
-                        g._runners.bases = 001
+                        g._runners = 001
                         on_first = g:on_first()
-                        g._runners.bases = 010
+                        g._runners = 010
                         on_second = g:on_second()
-                        g._runners.bases = 100
+                        g._runners = 100
                         on_third = g:on_third()
                         return on_first and on_second and on_third
                     end
                 )
                 it('should adv the runners',function()
                     local g = game
-                    g._runners.bases = 001
+                    g._runners = 001
                     g:advance_runners(2)
                     on_second = g:on_second()
                     on_third = g:on_third()
@@ -259,7 +259,7 @@ test(
                 end)
                 it('should walk the runner',function()
                     local g = game
-                    g._runners.bases = 001
+                    g._runners = 001
                     g:walk()
                     on_first = g:on_first()
                     on_second = g:on_second()
