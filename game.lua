@@ -20,8 +20,9 @@ game = {
         menu = { "idle" },
         strike = { "out", "idle" },
         base = { "idle" },
-        out = { "idle" },
-        foul = { "idle" }
+        out = { "idle", "gameover" },
+        foul = { "idle" },
+        gameover = { "idle" }
     },
 
     ball = {}, -- ball object
@@ -90,7 +91,7 @@ game = {
     end,
 
     count = {
-        0, 0,
+        0, 2,
         addStrike = function(self)
             self[1] += 1
         end,
@@ -127,10 +128,11 @@ game = {
     max_inning = 2, --changeable?
     max_outs = 3, --changeable?
     max_strikes = 3, -- changeable?
-    outs = 0,
+    outs = 2,
     role = 'p', -- 'b' for batter, 'p' pitcher
     score = { 0, 0 },
     stop_play_timer = false,
+
 
     strike_zone = {
         x = 51,
@@ -149,6 +151,7 @@ game = {
             spr(self.spr_num, self.x, self.y, 2, 2)
         end
     },
+
     bases = {
         {
             id = 1,
@@ -317,11 +320,18 @@ game = {
         return false
     end,
 
-
     reset_pitch = function(self)
         self.ball:reset_ball()
         self.batter:reset()
         self.state = "idle"
+    end,
+
+    reset = function(self)
+        self.outs = 0
+        self:reset_count()
+        self:reset_pitch()
+        self.score = { 0, 0 }
+        self.state = 'idle'
     end,
 
     is_pitching = function(self) return self.state == 'pitch' end,
@@ -335,6 +345,7 @@ game = {
     is_strike = function(self) return self.state == "strike" end,
     is_walked = function(self) return self.state == "walk" end,
     is_base = function(self) return self.state == "base" end,
+    is_game_over = function(self) return self.state == "gameover" end,
 
     -- transitions
     to_ball = function(self) self:change_state('ball') end,
@@ -496,8 +507,12 @@ game = {
             self:pause_play(
                 WAIT_T, function()
                     self.outs += 1
-                    self:reset_count()
-                    self:reset_pitch()
+                    if self.outs >= self.max_outs then
+                        self:change_state('gameover')
+                    else
+                        self:reset_count()
+                        self:reset_pitch()
+                    end
                 end
             )
         end
@@ -509,6 +524,11 @@ game = {
                     self:reset_pitch()
                 end
             )
+        end
+
+        if self:is_game_over() then
+            self:change_state('idle')
+            chg_scene('gameover')
         end
 
         if not self:is_out() then

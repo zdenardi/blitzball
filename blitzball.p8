@@ -4,6 +4,7 @@ __lua__
 #include globals.lua
 #include lib.lua
 #include start_menu.lua
+#include game_over.lua
 #include batter.lua
  -- must be before ball
 #include pitcher.lua

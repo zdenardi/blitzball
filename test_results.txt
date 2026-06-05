@@ -1,0 +1,104 @@
+
+Test "Game class Tests"
+
+
+*** walk_batter ***
+
+   - it should walk a batter, and game.runners should be {1,2}
+    PASS 
+
+   - it should walk a batter and state should go to idle.
+    PASS 
+
+   - it should walk a batter with bases loaded, and a run should score
+    PASS 
+
+
+*** Game State Machine ***
+
+   - it should verify transitions for idle state
+    PASS 
+
+   - it should verify transitions for pitch state
+    PASS 
+
+   - it should verify transitions for hit state
+    PASS 
+
+   - it should verify transitions for menu state
+    PASS 
+
+   - it should verify transitions for menu state
+    PASS 
+
+   - it should verify transitions for base state
+    PASS 
+
+   - it should verify transitions for out state
+    PASS 
+
+   - it should verify transitions for foul state
+    PASS 
+
+   - it should not allow bad state transitions
+    PASS 
+
+   - it should change state from idle to pitch
+    PASS 
+
+   - it should change state from pitch to hit
+    PASS 
+
+   - it should change state from pitch to strike
+    PASS 
+
+   - it should change state from pitch to ball
+    PASS 
+
+   - it should change state from pitch to miss
+    PASS 
+
+   - it should change state from hit to out
+    PASS 
+
+   - it should change state from hit to foul
+    PASS 
+
+   - it should change state from hit to base
+    PASS 
+
+   - it should change state from menu to idle
+    PASS 
+
+   - it should change state from strike to idle
+    PASS 
+
+   - it should change state from strike to out
+    PASS 
+
+   - it should change state from base to idle
+    PASS 
+
+   - it should change state from out,base and foul to idle
+    PASS 
+
+   - it State should change from ball to run
+    PASS 
+
+   - it Should show that first second and third base are occupied
+    PASS 
+
+   - it should adv the runners
+    PASS 
+
+   - it should walk the runner
+    PASS 
+
+Finished! 
+
+Passing Tests: 29
+
+Failing Tests: 0
+
+
+

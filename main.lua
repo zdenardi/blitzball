@@ -9,7 +9,7 @@ function _init()
 
     scene = "game"
 
-    -- menu/game
+    -- start_menu/game/gameover
 
     cpu_pitcher = {
         confidence = 0,
@@ -30,9 +30,17 @@ function _init()
     game:init()
 end
 
+function chg_scene(scn)
+    scene = scn
+end
+
 function _update()
     if scene == 'start_menu' then
         start_menu:update()
+    end
+
+    if scene == 'gameover' then
+        game_over:update()
     end
 
     if scene == 'game' then
@@ -66,8 +74,13 @@ function _draw()
     if (scene == 'start_menu') then
         start_menu:draw()
     end
+
     if (scene == 'game') then
         game_draw()
+    end
+
+    if scene == 'gameover' then
+        game_over:draw()
     end
 
     function draw_window(x, y, w, h, tc, bgc)
